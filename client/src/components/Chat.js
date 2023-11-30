@@ -10,7 +10,7 @@ export const Chat = () => {
     const [newMessage, setNewMessage] = useState("");
     const [messages, setMessages] = useState([]);
     const messagesRef = collection(db, 'voice');
-    const lastMessageRef = useRef(null);
+    const playedMessagesRef = useRef(new Set());
     const recorderControls = useAudioRecorder()
     const useStyles = makeStyles((theme) => ({
         chat: {
@@ -70,24 +70,21 @@ export const Chat = () => {
             snapshot.forEach((doc) => {
                 fetchedMessages.push({ ...doc.data(), id: doc.id });
             });
-            
-            // Automatically play new voice messages
-            if (lastMessageRef.current && fetchedMessages.length > messages.length) {
-                const newMessages = fetchedMessages.slice(messages.length);
-                newMessages.forEach(message => {
-                    if (message.audioUrl && message.id !== lastMessageRef.current) {
-                        const audio = new Audio(message.audioUrl);
-                        audio.play();
-                        lastMessageRef.current = message.id;
-                    }
-                });
-            }
+
+            // Play only new voice messages
+            fetchedMessages.forEach(message => {
+                if (message.audioUrl && !playedMessagesRef.current.has(message.id)) {
+                    const audio = new Audio(message.audioUrl);
+                    audio.play();
+                    playedMessagesRef.current.add(message.id);
+                }
+            });
 
             setMessages(fetchedMessages);
         });
 
         return () => unsubscribe();
-    }, [messages]);
+    }, []);
 
     const handleSubtmit = async (e) => {
         e.preventDefault();
